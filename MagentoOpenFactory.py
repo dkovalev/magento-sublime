@@ -21,10 +21,13 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 		if (len(sels) == 1):
 			text = self.view.substr(sels[0])
 			if (len(text)):
-				fileName = self.parseSels(text)
-				self.open(self.get_php_file(fileName))
+				fileName = self.parseSelected(text)
+				if fileName != None:
+					self.open(self.get_php_file(fileName))
 
 	def loadBase(self):
+		""" Load all active modules and parse local.xml """
+
 		for folder in sublime.active_window().folders():
 			modulesDir = '/app/etc/modules/'
 			xmlFiles = glob.glob(folder + modulesDir + '*.xml')
@@ -45,6 +48,8 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 						self.set_config(root.find('./global/helpers'), 'helper')
 
 	def set_config(self, item, type):
+		""" Parse xml elements and set parsed value to class variable """
+
 		if item != None:
 			for child in item.findall("./*"):
 				classElement = child.find('class')
@@ -61,16 +66,13 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 							className = classElement.text
 							classAlias = child.tag
 							self.cacheConfig['resource'].append({classAlias : className})
-							
-	def parseSels(self, text):
-		if (text.find('helper') != -1):
-			typeFactory = 'helper'
-		elif (text.find('ResourceModel') != -1):
-			typeFactory = 'resource'
-		elif (text.find('Model') != -1):
-			typeFactory = 'model'
-		elif (text.find('Block') != -1):
-			typeFactory = 'block'
+
+	def parseSelected(self, text):
+		""" Parse selected text and return class name """
+
+		typeFactory = self.get_type_factory(text)
+		if typeFactory == None:
+			return
 
 		start = text.find('(')
 		finish = text.find(')')
@@ -83,14 +85,33 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 		elif (typeFactory == 'helper'):
 			return self.get_file_from_conf(typeFactory, cutString, 'data')
 
+	def get_type_factory(self, text):
+		""" Get type factory """
+
+		typeFactory = None
+		if (text.find('helper') != -1):
+			typeFactory = 'helper'
+		elif (text.find('ResourceModel') != -1):
+			typeFactory = 'resource'
+		elif (text.find('Model') != -1):
+			typeFactory = 'model'
+		elif (text.find('Singleton') != -1):
+			typeFactory = 'model'
+		elif (text.find('Block') != -1):
+			typeFactory = 'block'
+		return typeFactory
+
 	def get_file_from_conf(self, typeFactory, config, prefix):
+		""" Get file name from class variable """
+
 		for item in self.cacheConfig[typeFactory]:
 			if item.get(config) != None:
 				return item.get(config) + '_' + prefix.title()
 
 	def open(self, filePath):
-		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
+		""" Open file """
 
+		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
 		for folder in sublime.active_window().folders():
 			for root in rootDirectories:
 				if os.path.isfile(folder+root+filePath):
@@ -99,7 +120,11 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 
 
 	def get_file(self, text):
+		""" Get file by magento class """
+
 		return text.strip().replace('_', '/')
 
 	def get_php_file(self, text):
+		""" Get php file by magento class """
+
 		return self.get_file(text) + '.php'
