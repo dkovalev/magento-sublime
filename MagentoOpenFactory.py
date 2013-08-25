@@ -5,6 +5,7 @@
 # Description: Open magento factory classes: 
 #				- Mage::helper('catalog')
 #				- Mage::getModel('catalog/product')
+#				- Mage::getResourceModel('catalog/product')
 #				- Mage::getBlock('catalog/product_view')
 #-----------------------------------------------------------------------------------
 import sublime, sublime_plugin
@@ -14,7 +15,7 @@ import xml.etree.ElementTree as ET
 
 class MagentoOpenFactory(sublime_plugin.TextCommand):
 	def run(self, edit):
-		self.cacheConfig = {'block' : [], 'model' : [], 'helper': []}
+		self.cacheConfig = {'block' : [], 'model' : [], 'helper': [], 'resource': []}
 		self.loadBase()
 		sels = self.view.sel()
 		if (len(sels) == 1):
@@ -43,9 +44,29 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 						self.set_config(root.find('./global/models'), 'model')
 						self.set_config(root.find('./global/helpers'), 'helper')
 
+	def set_config(self, item, type):
+		if item != None:
+			for child in item.findall("./*"):
+				classElement = child.find('class')
+				resourceModelElement = child.find('resourceModel')
+				if classElement != None:
+					className = classElement.text
+					classAlias = child.tag
+					self.cacheConfig[type].append({classAlias : className})
+				if resourceModelElement != None:
+					classElement = item.find(resourceModelElement.text)
+					if classElement != None:
+						classElement = classElement.find('class')
+						if classElement != None:
+							className = classElement.text
+							classAlias = child.tag
+							self.cacheConfig['resource'].append({classAlias : className})
+							
 	def parseSels(self, text):
 		if (text.find('helper') != -1):
 			typeFactory = 'helper'
+		elif (text.find('ResourceModel') != -1):
+			typeFactory = 'resource'
 		elif (text.find('Model') != -1):
 			typeFactory = 'model'
 		elif (text.find('Block') != -1):
@@ -64,8 +85,8 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 
 	def get_file_from_conf(self, typeFactory, config, prefix):
 		for item in self.cacheConfig[typeFactory]:
-				if item.get(config) != None:
-					return item.get(config) + '_' + prefix.title()
+			if item.get(config) != None:
+				return item.get(config) + '_' + prefix.title()
 
 	def open(self, filePath):
 		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
@@ -76,14 +97,6 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 					sublime.active_window().open_file(folder+root+filePath)
 					return
 
-	def set_config(self, item, type):
-		if item != None:
-			for child in item.findall("./*"):
-				classElement = child.find('class')
-				if classElement != None:
-					className = classElement.text
-					classAlias = child.tag
-					self.cacheConfig[type].append({classAlias : className})
 
 	def get_file(self, text):
 		return text.strip().replace('_', '/')
