@@ -20,10 +20,11 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 		sels = self.view.sel()
 		if (len(sels) == 1):
 			text = self.view.substr(sels[0])
-			if (len(text)):
-				fileName = self.parseSelected(text)
-				if fileName != None:
-					self.open(self.get_php_file(fileName))
+			if (len(text) == 0):
+				text = self.view.substr(self.view.line(sublime.Region(self.view.sel()[0].begin())))
+		fileName = self.parseSelected(text)
+		if fileName != None:
+			self.open(self.get_php_file(fileName))
 
 	def loadBase(self):
 		""" Load all active modules and parse local.xml """
