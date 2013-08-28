@@ -33,11 +33,12 @@ class Collector():
 					moduleName = module.tag
 					if active == 'true':
 						localXmlPath = folder + '/app/code/' + codepool + '/' + self.get_file(moduleName) + '/etc/config.xml'
-						tree = ET.parse(localXmlPath)
-						root = tree.getroot()
-						self.set_config(root.find('./global/blocks'), 'block')
-						self.set_config(root.find('./global/models'), 'model')
-						self.set_config(root.find('./global/helpers'), 'helper')
+						if os.path.isfile(localXmlPath):
+							tree = ET.parse(localXmlPath)
+							root = tree.getroot()
+							self.set_config(root.find('./global/blocks'), 'block')
+							self.set_config(root.find('./global/models'), 'model')
+							self.set_config(root.find('./global/helpers'), 'helper')
 
 	def set_config(self, item, type):
 		""" Parse xml elements and set parsed value to class variable """
