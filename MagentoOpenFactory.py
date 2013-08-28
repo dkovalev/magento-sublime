@@ -8,27 +8,18 @@
 #				- Mage::getResourceModel('catalog/product')
 #				- Mage::getBlock('catalog/product_view')
 #-----------------------------------------------------------------------------------
-import sublime, sublime_plugin
+import sublime, sublime_plugin, re
 import os.path
 import glob
 import xml.etree.ElementTree as ET
 
-class MagentoOpenFactory(sublime_plugin.TextCommand):
-	def run(self, edit):
-		self.cacheConfig = {'block' : [], 'model' : [], 'helper': [], 'resource': []}
-		self.loadBase()
-		sels = self.view.sel()
-		if (len(sels) == 1):
-			text = self.view.substr(sels[0])
-			if (len(text) == 0):
-				text = self.view.substr(self.view.line(sublime.Region(self.view.sel()[0].begin())))
-		fileName = self.parseSelected(text)
-		if fileName != None:
-			self.open(self.get_php_file(fileName))
+class Collector():
+	"""Collect files"""
 
 	def loadBase(self):
 		""" Load all active modules and parse local.xml """
 
+		self.cacheConfig = {'block' : [], 'model' : [], 'helper': [], 'resource': []}
 		for folder in sublime.active_window().folders():
 			modulesDir = '/app/etc/modules/'
 			xmlFiles = glob.glob(folder + modulesDir + '*.xml')
@@ -109,16 +100,28 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 			if item.get(config) != None:
 				return item.get(config) + '_' + prefix.title()
 
-	def open(self, filePath):
-		""" Open file """
+	def save_method_signature(self, filePath):
 
+		self.cacheFunction = []
 		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
 		for folder in sublime.active_window().folders():
 			for root in rootDirectories:
 				if os.path.isfile(folder+root+filePath):
-					sublime.active_window().open_file(folder+root+filePath)
-					return
+					file_lines = open(folder+root+filePath, 'rU')
+					for line in file_lines:
+						if "function" in line:
+							matches = re.search('function\s*(\w+)\s*\((.*)\)', line)
+							if matches != None:
+								self.cacheFunction.append(matches.group(1) + '(' + matches.group(2) + ')')
+								
 
+	def get_text(self):
+		sels = self.view.sel()
+		if (len(sels) == 1):
+			text = self.view.substr(sels[0])
+			if (len(text) == 0):
+				text = self.view.substr(self.view.line(sublime.Region(self.view.sel()[0].begin())))
+		return text
 
 	def get_file(self, text):
 		""" Get file by magento class """
@@ -129,3 +132,49 @@ class MagentoOpenFactory(sublime_plugin.TextCommand):
 		""" Get php file by magento class """
 
 		return self.get_file(text) + '.php'
+
+
+class MagentoOpenFactory(Collector, sublime_plugin.TextCommand):
+	def run(self, edit):
+		self.loadBase()
+		text = self.get_text()
+		fileName = self.parseSelected(text)
+		if fileName != None:
+			self.open(self.get_php_file(fileName))
+
+	def open(self, filePath):
+		""" Open file """
+
+		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
+		for folder in sublime.active_window().folders():
+			for root in rootDirectories:
+				if os.path.isfile(folder+root+filePath):
+					sublime.active_window().open_file(folder+root+filePath)
+					return
+
+class MagentoSelectFactoryMethods(Collector, sublime_plugin.TextCommand):
+	def run(self, edit):
+		self.loadBase()
+		text = self.get_text()
+		fileName = self.parseSelected(text)
+		if fileName == None:
+			return
+		self.save_method_signature(self.get_php_file(fileName))
+
+		sublime.active_window().show_quick_panel(self.cacheFunction, self.apply_method)
+
+
+	def apply_method(self, ind):
+		if ind == -1:
+			return
+		line = self.view.sel()[0].begin()
+		insert = self.cacheFunction[ind]
+		args = {'line' : line, 'insert' : insert}
+		sublime.active_window().run_command('magento_insert_method', args)
+
+class MagentoInsertMethod(sublime_plugin.TextCommand):
+
+	def run(self, edit, line, insert):
+		sublime.active_window().active_view().insert(edit, line, insert)
+
+		

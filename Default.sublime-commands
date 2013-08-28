@@ -3,4 +3,8 @@
         "caption": "Magento: Open Factory",
         "command": "magento_open_factory"
     },
+    {
+        "caption": "Magento: Select Factory Methods",
+        "command": "magento_select_factory_methods"
+    },
 ]
