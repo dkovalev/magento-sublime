@@ -20,6 +20,7 @@ class Collector():
 		""" Load all active modules and parse local.xml """
 
 		self.cacheConfig = {'block' : [], 'model' : [], 'helper': [], 'resource': []}
+		self.cacheRewrite = {'block' : [], 'model' : [], 'helper': [], 'resource': []}
 		for folder in sublime.active_window().folders():
 			modulesDir = '/app/etc/modules/'
 			xmlFiles = glob.glob(folder + modulesDir + '*.xml')
@@ -59,6 +60,27 @@ class Collector():
 							className = classElement.text
 							classAlias = child.tag
 							self.cacheConfig['resource'].append({classAlias : className})
+				rewrite = child.find('rewrite')
+				if rewrite != None:
+					self.add_rewtite(child, type)
+
+	def add_rewtite(self, item, type):
+		""" Collect rewrite aliases"""
+
+		namspace = item.tag
+		rewrite = item.find('rewrite')
+		for child in rewrite.findall("./*"):
+			prefix = child.tag
+			classRewrite = child.text
+			classAlias = namspace + '/' + prefix
+			self.cacheRewrite[type].append({classAlias : classRewrite})
+
+	def get_file_from_rewrite(self, alias, typeFactory):
+		""" Get file name from rewrite"""
+
+		for item in self.cacheRewrite[typeFactory]:
+			if item.get(alias) != None:
+				return item.get(alias)
 
 	def parseSelected(self, text):
 		""" Parse selected text and return class name """
@@ -70,6 +92,9 @@ class Collector():
 		start = text.find('(')
 		finish = text.find(')')
 		cutString = text[start + 2:finish - 1]
+		fileName = self.get_file_from_rewrite(cutString, typeFactory)
+		if fileName != None:
+			return fileName
 		if (cutString.find('/') != -1):
 			start = cutString.find('/')
 			firstCutSting = cutString[:start]
@@ -102,6 +127,7 @@ class Collector():
 				return item.get(config) + '_' + prefix.title()
 
 	def save_method_signature(self, filePath):
+		""" Collect methods """
 
 		self.cacheFunction = []
 		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
@@ -117,6 +143,8 @@ class Collector():
 								
 
 	def get_text(self):
+		""" Get text """
+
 		sels = self.view.sel()
 		if (len(sels) == 1):
 			text = self.view.substr(sels[0])
@@ -136,6 +164,8 @@ class Collector():
 
 
 class MagentoOpenFactory(Collector, sublime_plugin.TextCommand):
+	""" Open factory class """
+
 	def run(self, edit):
 		self.loadBase()
 		text = self.get_text()
@@ -154,6 +184,8 @@ class MagentoOpenFactory(Collector, sublime_plugin.TextCommand):
 					return
 
 class MagentoSelectFactoryMethods(Collector, sublime_plugin.TextCommand):
+	""" Select factory methods """
+
 	def run(self, edit):
 		self.loadBase()
 		text = self.get_text()
@@ -166,6 +198,8 @@ class MagentoSelectFactoryMethods(Collector, sublime_plugin.TextCommand):
 
 
 	def apply_method(self, ind):
+		""" Apply selected method """
+
 		if ind == -1:
 			return
 		line = self.view.sel()[0].begin()
