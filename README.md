@@ -11,3 +11,5 @@ ctrl+l - open factory class, example
 				    - Mage::getBlock('catalog/product_view')
 				    
 ctrl+k - load all factory methods
+
+ctrl+shift+l - open block into template
