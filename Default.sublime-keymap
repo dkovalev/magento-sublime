@@ -1,4 +1,5 @@
 [
 	{ "keys": ["ctrl+l"], "command": "magento_open_factory" },
 	{ "keys": ["ctrl+k"], "command": "magento_select_factory_methods" },
+	{ "keys": ["ctrl+shift+l"], "command": "magento_open_block_by_template" },
 ]

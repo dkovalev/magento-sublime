@@ -159,6 +159,16 @@ class Collector():
 				text = self.view.substr(self.view.line(sublime.Region(self.view.sel()[0].begin())))
 		return text
 
+	def open(self, filePath):
+		""" Open file """
+
+		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
+		for folder in sublime.active_window().folders():
+			for root in rootDirectories:
+				if os.path.isfile(folder+root+filePath):
+					sublime.active_window().open_file(folder+root+filePath)
+					return
+
 	def get_file(self, text):
 		""" Get file by magento class """
 
@@ -180,15 +190,6 @@ class MagentoOpenFactory(Collector, sublime_plugin.TextCommand):
 		if fileName != None:
 			self.open(self.get_php_file(fileName))
 
-	def open(self, filePath):
-		""" Open file """
-
-		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
-		for folder in sublime.active_window().folders():
-			for root in rootDirectories:
-				if os.path.isfile(folder+root+filePath):
-					sublime.active_window().open_file(folder+root+filePath)
-					return
 
 class MagentoSelectFactoryMethods(Collector, sublime_plugin.TextCommand):
 	""" Select factory methods """
@@ -220,4 +221,31 @@ class MagentoInsertMethod(sublime_plugin.TextCommand):
 	def run(self, edit, line, insert):
 		sublime.active_window().active_view().insert(edit, line, insert)
 
-		
+class MagentoOpenBlockByTemplate(Collector, sublime_plugin.TextCommand):
+
+	def run(self, edit):
+		view = sublime.Window.active_view(sublime.active_window())
+		template = view.file_name()
+		matches = re.search('design/(.+)template/(.+)', template)
+		text = None
+		if matches != None:
+			theme = matches.group(1)
+			template = matches.group(2)
+			text = self.parse_layout(theme, template)
+		if text != None:
+			text = "getBlock('" + text +"')"
+			self.loadBase()
+			fileName = self.parseSelected(text)
+			if fileName != None:
+				self.open(self.get_php_file(fileName))
+
+	def parse_layout(self, path, template):
+		for folder in sublime.active_window().folders():
+			modulesDir = '/app/design/'
+			xmlFiles = glob.glob(folder + modulesDir + path + 'layout/*.xml')
+			for xmlFile in xmlFiles:
+				if os.path.isfile(xmlFile):
+					content = open(xmlFile, 'rU').read()
+					result = re.search('type="(.+)"\s+(.+)template="'+ template +'"', content)
+					if result != None:
+						return result.group(1)
