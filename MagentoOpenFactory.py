@@ -128,19 +128,26 @@ class Collector():
 
 	def save_method_signature(self, filePath):
 		""" Collect methods """
-
-		self.cacheFunction = []
+		if self.level_opened_files == 2:
+			return
+		
 		rootDirectories = ['/app/code/core/', '/app/code/community/', '/app/code/local/']
 		for folder in sublime.active_window().folders():
 			for root in rootDirectories:
 				if os.path.isfile(folder+root+filePath):
 					file_lines = open(folder+root+filePath, 'rU')
+					self.level_opened_files = self.level_opened_files + 1
 					for line in file_lines:
 						if "function" in line:
 							matches = re.search('function\s*(\w+)\s*\((.*)\)', line)
 							if matches != None:
 								self.cacheFunction.append(matches.group(1) + '(' + matches.group(2) + ')')
-								
+
+					file_lines = open(folder+root+filePath, 'rU').read()
+					result = re.search("class\s+?(?:(?:[A-Z][a-zA-Z0-9]+_?)+)\s+?extends\s+?((?:[A-Z][a-zA-Z0-9]+_?)+)", file_lines, re.M | re.U)
+					if result != None:
+						parentClass = result.group(1)
+						self.save_method_signature(self.get_php_file(parentClass))
 
 	def get_text(self):
 		""" Get text """
@@ -187,13 +194,14 @@ class MagentoSelectFactoryMethods(Collector, sublime_plugin.TextCommand):
 	""" Select factory methods """
 
 	def run(self, edit):
+		self.cacheFunction = []
+		self.level_opened_files = 0
 		self.loadBase()
 		text = self.get_text()
 		fileName = self.parseSelected(text)
 		if fileName == None:
 			return
 		self.save_method_signature(self.get_php_file(fileName))
-
 		sublime.active_window().show_quick_panel(self.cacheFunction, self.apply_method)
 
 
