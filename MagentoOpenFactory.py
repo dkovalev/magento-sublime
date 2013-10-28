@@ -89,9 +89,9 @@ class Collector():
 		if typeFactory == None:
 			return
 
-		start = text.find('(')
-		finish = text.find(')')
-		cutString = text[start + 2:finish - 1]
+		start = text.find("('")
+		finish = text.find("')")
+		cutString = text[start + 2:finish]
 		fileName = self.get_file_from_rewrite(cutString, typeFactory)
 		if fileName != None:
 			return fileName
